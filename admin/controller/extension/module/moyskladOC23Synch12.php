@@ -144,25 +144,24 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         return !$this->error;
 
     }
-    
-    #TODO где то натупил с рекурсией, товар только  1 получаю, а мне нужно вывести весь, что есть
-    
-    
+  
     //получаем весь товар, что есть (рекурсия)
     public function getAllProduct($counts = 0){
  
-         //$urlProduct = "entity/product?offset=$counts&limit=100";
-         $urlProduct = "entity/product?offset=$counts&limit=1";
+          $urlProduct = "entity/product?offset=$counts&limit=100";
+        // $urlProduct = "entity/product?offset=$counts&limit=1";
         $product = $this->getNeedInfo($urlProduct,$this->get);
 
-        //for($i=0; $i<100; $i++){
-        for($i=0; $i<2; $i++){    
-        //если дошли до конца списка то выходим из рекурсии
+        for($i=0; $i<100; $i++){
+         //если дошли до конца списка то выходим из рекурсии
             if(empty($product["rows"][$i]["id"])){
-                break;
+                exit();
             }
 
-             var_dump($product["rows"][$i]["name"]);
+             //var_dump($product["rows"][$i]["name"]);
+            
+            // передаем uuid для проверки существует ли такой uuid в базе или нет
+            $this->searchUUID($product["rows"][$i]["id"],$product["rows"][$i]);
 
             
         } 
@@ -216,6 +215,98 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
     curl_close($ch);  
 
      return json_decode($result, true);
+    }
+
+
+    //делаем поиск в таблице uuid  на id  товара.
+    //Если нету то добавляем товар если есть id  товара то обновляем.
+    public function searchUUID($uuid,$mas){
+        
+        //получаем доступ к модели модуля
+        $this->load->model('tool/moyskladOC23Synch12');
+        $findUUID = $this->model_tool_moyskladOC23Synch12->modelSearchUUID($uuid);
+        
+        //формируем массив данных
+        $data = [
+            'model'                 =>  "",
+            'sku'                   =>  "",
+            'upc'                   =>  "",
+            'ean'                   =>  "",
+            'jan'                   =>  "",
+            'isbn'                  =>  "",
+            'mpn'                   =>  "",
+            'location'              =>  "",
+            'quantity'              =>  "",
+            'minimum'               =>  "",
+            'subtract'              =>  "",
+            'stock_status_id'       =>  "",
+            'date_available'        =>  "",
+            'manufacturer_id'       =>  "",
+            'shipping'              =>  "",
+            'price'                 =>  "",
+            'points'                =>  "",
+            'weight'                =>  "",
+            'weight_class_id'       =>  "",
+            'length'                =>  "",
+            'width'                 =>  "",
+            'height'                =>  "",
+            'length_class_id'       =>  "",
+            'status'                =>  "",
+            'tax_class_id'          =>  "",
+            'sort_order'            =>  "",
+            'image'                 =>  "",
+            'product_description'   =>  "",
+            'product_store'         =>  "",
+            'product_attribute'     =>  "",
+            'product_option'        =>  "",
+            'product_discount'      =>  "",
+            'product_special'       =>  "",
+            'product_image'         =>  "",
+            'uuid'                  =>  $uuid
+        ];
+       
+        
+        //если нашли id товара то update, если нет то insert
+        if(!empty($findUUID)){
+            $this->updateProduct($findUUID);
+        }else{
+            #TODO сюда надо передать инфу по добавлению нового товара 
+            #(параметр в метод) + добавить еще нужно в uuid  таблицу новый товар, 
+            #то есть после инсерта нужно вернуть id  товара и сделать 
+            #проверку если все ок, то тогда мы передаем id  товара в параметр 
+            #функции и дальше insert  в таблицу uuid все, что нужные 
+            #данные. uuid товара и id только что созданного товара
+            $this->insertProduct($data);
+        }
+        
+        
+
+    }
+    
+    
+    //метод по обновлению инфы товара
+    public function updateProduct($id){
+        #TODO надо найти стандартный метод по update
+        
+    }
+    
+    //метод по добавлению нового товара
+    public function insertProduct($data){
+         
+        //подгружаем стандартный метод опенкарт по добавлению нового товара
+        $this->load->model('catalog/product');
+        $product_id = $this->model_catalog_product->addProduct($data);
+        
+        //делаем проверку если товар добавлен то заносим его id  в таблицу uuid
+        if(!empty($product_id)){
+            
+            #TODO  надо занести новый ид товара и $data['uuid'] в 
+            #таблицу uuid. Надо еще будет разобраться с модификаторами как правильно добавлять
+            
+        }
+        
+        
+        
     }
  
    
