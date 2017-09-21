@@ -148,8 +148,8 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
     //получаем весь товар, что есть (рекурсия)
     public function getAllProduct($counts = 0){
  
-          $urlProduct = "entity/product?offset=$counts&limit=100";
-        // $urlProduct = "entity/product?offset=$counts&limit=1";
+        //  $urlProduct = "entity/product?offset=$counts&limit=100";
+         $urlProduct = "entity/product?offset=$counts&limit=1";
         $product = $this->getNeedInfo($urlProduct,$this->get);
 
         for($i=0; $i<100; $i++){
@@ -164,7 +164,10 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             $this->searchUUID($product["rows"][$i]["id"],$product["rows"][$i]);
 
             
-        } 
+        }
+        
+        //так как в API написано, что нельзя совершать более 100 запросов в периоде меньше 5 сек.
+        sleep(5);
 
         //вызов рекурсии  
         $this->getAllProduct($counts+$i);
@@ -236,16 +239,16 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             'isbn'                  =>  "",
             'mpn'                   =>  "",
             'location'              =>  "",
-            'quantity'              =>  "",
+            'quantity'              =>  (!empty(getQuantity($mas['name']))) ? getQuantity($mas['name']): 0,
             'minimum'               =>  "",
             'subtract'              =>  "",
             'stock_status_id'       =>  "",
             'date_available'        =>  "",
             'manufacturer_id'       =>  "",
             'shipping'              =>  "",
-            'price'                 =>  "",
+            'price'                 =>  (!empty($mas['salePrices'][0]['value'])) ? $mas['salePrices'][0]['value']: 0,
             'points'                =>  "",
-            'weight'                =>  "",
+            'weight'                =>  (!empty($mas['weight'])) ? $mas['weight']: 0,
             'weight_class_id'       =>  "",
             'length'                =>  "",
             'width'                 =>  "",
@@ -254,14 +257,18 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             'status'                =>  "",
             'tax_class_id'          =>  "",
             'sort_order'            =>  "",
-            'image'                 =>  "",
-            'product_description'   =>  "",
+            'image'                 =>  (!empty($this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]))) ? $this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]): " ",
+            'product_description'   =>  [
+                'name'          => $mas['name'],
+                'description'   => (!empty($mas['description'])) ? $mas['description']: " ",
+                
+            ],
             'product_store'         =>  "",
             'product_attribute'     =>  "",
             'product_option'        =>  "",
             'product_discount'      =>  "",
             'product_special'       =>  "",
-            'product_image'         =>  "",
+            'product_image'         =>  (!empty($this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]))) ? $this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]): " ",
             'uuid'                  =>  $uuid
         ];
        
@@ -300,14 +307,76 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         //делаем проверку если товар добавлен то заносим его id  в таблицу uuid
         if(!empty($product_id)){
             
-            #TODO  надо занести новый ид товара и $data['uuid'] в 
-            #таблицу uuid. Надо еще будет разобраться с модификаторами как правильно добавлять
+            var_dump($product_id);
+            
+            
+            #TODO  надо занести новый ид товара и $data['uuid'] в таблицу uuid. 
             
         }
         
         
         
     }
+    
+    
+    
+    //функция по скачиванию картинок из моего склада
+   function downloadImage($url,$name){
+        
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);  
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_USERPWD, $this->login.":".$this->password);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(   
+            'Accept: application/octet-stream',
+            'Content-Type: application/octet-stream')                                                           
+        );  
+        $response = curl_exec($ch);
+       
+        //декодируем json строку  для получения ошибок на стороне сервера
+        $error_msg = json_decode($response);
+
+        curl_close($ch);
+
+        //проверяем нету ли ошибок на стороне сервера, если нету то загружаем картинку, если есть то возвращаем false
+        if(empty($error_msg->errors)){
+            
+            file_put_contents('../image/catalog/'.$name, $response);
+            
+            return 'catalog/'.$name;
+        }else{
+            return false;
+        }
+
+
+    }
+    
+    //получаем количество доступного товара в "Остатках"
+    function getQuantity($name){
+
+        $ch = curl_init(); 
+        curl_setopt($ch, CURLOPT_URL, "https://online.moysklad.ru/api/remap/1.1/entity/assortment?filter=name=".urlencode($name));    
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);     
+        curl_setopt($ch, CURLOPT_USERPWD, $this->login.":".$this->password);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC); 
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(   
+            'Accept: application/json',
+            'Content-Type: application/json')                                                           
+        ); 
+        $response = curl_exec($ch);
+        curl_close($ch);
+        $jsonAnswerServer = json_decode($response);
+        
+        //формируем результат по столбцу "Доступно" в моем складе
+        $quantity = $jsonAnswerServer->rows[0]->quantity;
+
+        return $quantity;
+
+    }
+ 
  
    
 
