@@ -51,7 +51,7 @@ error_reporting(E_ALL ^E_NOTICE);
             <table>
                  <tr>
                    <td><span style="margin-left:20px; color: black;"><?php echo $import_text; ?></span></td>
-                   <td><a class="button" style="margin-left: 30px;"><?php echo $import_button; ?></a></td>
+                   <td><a class="button importProduct" style="margin-left: 30px;"><?php echo $import_button; ?></a></td>
                  </tr>
             </table> 
             
@@ -75,6 +75,31 @@ error_reporting(E_ALL ^E_NOTICE);
 </div>
 
 <script type="text/javascript"><!--
-  $('#tabs a').tabs();
-  //--></script>
+    $('#tabs a').tabs();
+ //--></script>
+
+ <script>
+     $('a.importProduct').click(function(e){
+     e.preventDefault();
+      $.ajax({
+               url : "index.php?route=extension/module/moyskladOC23Synch12/getAllProduct&token=<?=$_GET['token']?>",
+               type : 'POST',
+               dataType:'text',
+               data :{
+                start: 'start'
+            },
+             success:function(data){
+                 alert(data);
+                 
+             },
+             error:function (xhr, ajaxOptions, thrownError){
+                console.log(thrownError); //выводим ошибку
+            }
+              
+           });
+     
+    });
+ </script>
+
+
 <?php echo $footer; ?>

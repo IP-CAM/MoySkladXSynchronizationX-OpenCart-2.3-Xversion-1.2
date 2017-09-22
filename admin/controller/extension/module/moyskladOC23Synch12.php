@@ -147,14 +147,19 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
   
     //получаем весь товар, что есть (рекурсия)
     public function getAllProduct($counts = 0){
- 
-        //  $urlProduct = "entity/product?offset=$counts&limit=100";
-         $urlProduct = "entity/product?offset=$counts&limit=1";
+        
+        
+        //по клику запускаем наш скрипт
+        if(!empty($_POST['start'])){
+            
+       //  $urlProduct = "entity/product?offset=$counts&limit=100";
+        $urlProduct = "entity/product?offset=$counts&limit=1";
         $product = $this->getNeedInfo($urlProduct,$this->get);
 
         for($i=0; $i<100; $i++){
          //если дошли до конца списка то выходим из рекурсии
             if(empty($product["rows"][$i]["id"])){
+                echo "Finish!!!";
                 exit();
             }
 
@@ -171,6 +176,8 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
 
         //вызов рекурсии  
         $this->getAllProduct($counts+$i);
+        
+       } 
    
     }
     
@@ -228,8 +235,21 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         //получаем доступ к модели модуля
         $this->load->model('tool/moyskladOC23Synch12');
         $findUUID = $this->model_tool_moyskladOC23Synch12->modelSearchUUID($uuid);
+
+        //проверяем есть ли картинка
+        if(!empty($mas["image"])){
+            $imageHreff = $mas["image"]["meta"]["href"];
+            $imageName  = $mas["image"]["filename"];
+            $image = (!empty($this->downloadImage($imageHreff, $imageName))) ? $this->downloadImage($imageHreff, $imageName): " ";
+
+        }else{
+           $imageHreff = " "; 
+           $imageName  = " ";
+           $image = "";
+        }
         
-        //формируем массив данных
+        
+ 
         $data = [
             'model'                 =>  "",
             'sku'                   =>  "",
@@ -239,7 +259,7 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             'isbn'                  =>  "",
             'mpn'                   =>  "",
             'location'              =>  "",
-            'quantity'              =>  (!empty(getQuantity($mas['name']))) ? getQuantity($mas['name']): 0,
+            'quantity'              =>  (!empty($this->getQuantity($mas['name']))) ? $this->getQuantity($mas['name']): 0,
             'minimum'               =>  "",
             'subtract'              =>  "",
             'stock_status_id'       =>  "",
@@ -257,44 +277,43 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             'status'                =>  "",
             'tax_class_id'          =>  "",
             'sort_order'            =>  "",
-            'image'                 =>  (!empty($this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]))) ? $this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]): " ",
+            'image'                 =>  $image,
             'product_description'   =>  [
-                'name'          => $mas['name'],
-                'description'   => (!empty($mas['description'])) ? $mas['description']: " ",
-                
+                $this->config->get('config_language_id') =>[
+                    'name'          => $mas['name'],
+                    'description'   => (!empty($mas['description'])) ? $mas['description']: " ",
+                    'tag'           =>  "",
+                    'meta_title'    =>  "",
+                    'meta_description'  =>  "",
+                    'meta_keyword'  =>  "",
+                ],
             ],
-            'product_store'         =>  "",
-            'product_attribute'     =>  "",
-            'product_option'        =>  "",
-            'product_discount'      =>  "",
-            'product_special'       =>  "",
-            'product_image'         =>  (!empty($this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]))) ? $this->downloadImage($mas["image"]["meta"]["href"], $mas["image"]["filename"]): " ",
-            'uuid'                  =>  $uuid
+            
+            'uuid'                  =>  $uuid,
+            'keyword'               =>  "",
+ 
+
         ];
        
         
         //если нашли id товара то update, если нет то insert
         if(!empty($findUUID)){
-            $this->updateProduct($findUUID);
+            $this->updateProduct($findUUID,$data);
         }else{
-            #TODO сюда надо передать инфу по добавлению нового товара 
-            #(параметр в метод) + добавить еще нужно в uuid  таблицу новый товар, 
-            #то есть после инсерта нужно вернуть id  товара и сделать 
-            #проверку если все ок, то тогда мы передаем id  товара в параметр 
-            #функции и дальше insert  в таблицу uuid все, что нужные 
-            #данные. uuid товара и id только что созданного товара
             $this->insertProduct($data);
         }
         
-        
+        return true;
 
     }
     
     
-    //метод по обновлению инфы товара
-    public function updateProduct($id){
-        #TODO надо найти стандартный метод по update
+    //метод по обновлению инфы товара, параметр id товара
+    public function updateProduct($id,$data){
         
+        //получаем доступ к модели модуля
+        $this->load->model('tool/moyskladOC23Synch12');
+        $this->model_tool_moyskladOC23Synch12->updateProduct($id,$data);
     }
     
     //метод по добавлению нового товара
@@ -304,18 +323,21 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         $this->load->model('catalog/product');
         $product_id = $this->model_catalog_product->addProduct($data);
         
+        //получаем доступ к модели модуля
+        $this->load->model('tool/moyskladOC23Synch12');
+        
         //делаем проверку если товар добавлен то заносим его id  в таблицу uuid
         if(!empty($product_id)){
+            $data = [
+               'product_id' =>  $product_id,
+               'uuid'       =>  $data['uuid'],   
+            ];
             
-            var_dump($product_id);
-            
-            
-            #TODO  надо занести новый ид товара и $data['uuid'] в таблицу uuid. 
-            
+          //передаем массив в модель модуля  
+         $this->model_tool_moyskladOC23Synch12->modelInsertUUID($data);
         }
         
-        
-        
+        return true;
     }
     
     
@@ -326,21 +348,19 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);  
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_USERPWD, $this->login.":".$this->password);
+        curl_setopt($ch, CURLOPT_USERPWD, $this->login.":".$this->pass);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(   
             'Accept: application/octet-stream',
             'Content-Type: application/octet-stream')                                                           
         );  
         $response = curl_exec($ch);
-       
-        //декодируем json строку  для получения ошибок на стороне сервера
-        $error_msg = json_decode($response);
+    
 
         curl_close($ch);
 
         //проверяем нету ли ошибок на стороне сервера, если нету то загружаем картинку, если есть то возвращаем false
-        if(empty($error_msg->errors)){
+        if(!empty($response)){
             
             file_put_contents('../image/catalog/'.$name, $response);
             
@@ -359,7 +379,7 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         curl_setopt($ch, CURLOPT_URL, "https://online.moysklad.ru/api/remap/1.1/entity/assortment?filter=name=".urlencode($name));    
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);     
-        curl_setopt($ch, CURLOPT_USERPWD, $this->login.":".$this->password);
+        curl_setopt($ch, CURLOPT_USERPWD, $this->login.":".$this->pass);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC); 
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(   
@@ -376,6 +396,14 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         return $quantity;
 
     }
+    
+    
+    #TODO надо создать метод  который будет создавать остатки по товарам в моем 
+    #складе. В таблицу Stock будем сгружать 3 инфы это : ид (ид товара с моего склада), 
+    #имя и остатки (не количество). Все это сгружаем в одну траблицу (типа кэширования, что бы каждый 
+    #раз не ждать хз скок времени на подгрузку инфы). Создать в меню кнопку ОБНОВИТЬ, где  будет удаленна 
+    #вся информация из таблици и заново загружена сервера.  Сделать все нужно в табличной верстке с 
+    #пагинацией (30 записей) и так дальше на разных страницах. Сортировать от большого к меньшему
  
  
    

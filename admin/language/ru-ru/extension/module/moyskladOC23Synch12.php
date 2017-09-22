@@ -13,8 +13,9 @@ $_['text_tab_import']	= 'Импорт товара';
 $_['import_text']	= 'Импортировать товар в магазин';
 $_['import_button']	= 'Импорт';
 
+
 //Lot product
-$_['text_tab_lot']	= 'Количество продукта';
+$_['text_tab_lot']	= 'Остатки продукта';
 
 //Author
 $_['text_tab_author']	= 'Автор';

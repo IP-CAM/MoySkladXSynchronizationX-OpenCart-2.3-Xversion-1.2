@@ -17,7 +17,7 @@ $_['import_button']	= 'Import';
 
 
 //Lot product
-$_['text_tab_lot']	= 'Quantity product';
+$_['text_tab_lot']	= 'Stock product';
 
 
 //Author
