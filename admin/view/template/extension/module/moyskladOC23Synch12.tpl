@@ -32,7 +32,7 @@ error_reporting(E_ALL ^E_NOTICE);
               <a href="#tab-author"><?php echo $text_tab_author; ?></a>
             </div>
         </div>
-        <div id="tab-setting">
+         <div id="tab-setting">
             <form action="<?php echo $action; ?>" method="post" enctype="multipart/form-data" id="form-category" class="form-horizontal">
                <table class="form">
                     <tr>
@@ -72,6 +72,10 @@ error_reporting(E_ALL ^E_NOTICE);
         </div>
     </div>
   </div>
+   <!-- start animation loading !-->
+        <div class="ball"></div>
+        <div class="ball1"></div>
+        <!-- end animation loading !-->
 </div>
 
 <script type="text/javascript"><!--
@@ -81,6 +85,12 @@ error_reporting(E_ALL ^E_NOTICE);
  <script>
      $('a.importProduct').click(function(e){
      e.preventDefault();
+     
+     //вкл. анимацию загрузки
+     $('.ball').css('display','block');
+     $('.ball1').css('display','block');
+     
+     
       $.ajax({
                url : "index.php?route=extension/module/moyskladOC23Synch12/getAllProduct&token=<?=$_GET['token']?>",
                type : 'POST',
@@ -89,11 +99,14 @@ error_reporting(E_ALL ^E_NOTICE);
                 start: 'start'
             },
              success:function(data){
+                //когда товар загрузился, убираем анимацию и выводим сообщение, что товар загрузился 
+                $('.ball').css('display','none');
+                $('.ball1').css('display','none');
                  alert(data);
                  
              },
              error:function (xhr, ajaxOptions, thrownError){
-                console.log(thrownError); //выводим ошибку
+                alert(thrownError); //выводим ошибку
             }
               
            });

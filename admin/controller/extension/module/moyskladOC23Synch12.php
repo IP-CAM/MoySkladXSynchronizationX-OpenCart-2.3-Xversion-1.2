@@ -152,8 +152,8 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         //по клику запускаем наш скрипт
         if(!empty($_POST['start'])){
             
-       //  $urlProduct = "entity/product?offset=$counts&limit=100";
-        $urlProduct = "entity/product?offset=$counts&limit=1";
+         // $urlProduct = "entity/product?offset=$counts&limit=100";
+         $urlProduct = "entity/product?offset=$counts&limit=20";
         $product = $this->getNeedInfo($urlProduct,$this->get);
 
         for($i=0; $i<100; $i++){
@@ -249,6 +249,15 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
         }
         
         
+        //проверяем существует ли цена продажи
+        if(!empty($mas['salePrices'][0]['value'])){
+	  $price = number_format($mas['salePrices'][0]['value']/100, 2, '.', '');
+        
+        }else{
+	  $price = 0;
+        }
+ 
+        
  
         $data = [
             'model'                 =>  "",
@@ -266,7 +275,7 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             'date_available'        =>  "",
             'manufacturer_id'       =>  "",
             'shipping'              =>  "",
-            'price'                 =>  (!empty($mas['salePrices'][0]['value'])) ? $mas['salePrices'][0]['value']: 0,
+            'price'                 =>  $price,
             'points'                =>  "",
             'weight'                =>  (!empty($mas['weight'])) ? $mas['weight']: 0,
             'weight_class_id'       =>  "",
