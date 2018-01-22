@@ -9,7 +9,7 @@
         <operation>
             <search trim="true|false" index="0"><![CDATA[$this->db->query("DELETE FROM " . DB_PREFIX . "coupon_product WHERE product_id = '" . (int)$product_id . "'");]]></search>
             <add position="after" offset="1"><![CDATA[
-            $this->db->query("DELETE FROM uuid WHERE product_id = '" . (int)$product_id . "'");   
+            $this->db->query("DELETE FROM " . DB_PREFIX . "uuid WHERE product_id = '" . (int)$product_id . "'");   
             ]]></add>
         </operation>
     </file>  

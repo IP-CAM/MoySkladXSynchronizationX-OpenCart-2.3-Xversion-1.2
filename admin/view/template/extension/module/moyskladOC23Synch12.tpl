@@ -22,13 +22,13 @@ error_reporting(E_ALL ^E_NOTICE);
   <div class="container-fluid">
     <div class="panel panel-default">
         <div class="panel-heading">
-          <h3 class="panel-title"><i class="fa fa-pencil"></i> <?php echo "Настройка модуля"; ?></h3>
+          <h3 class="panel-title"><i class="fa fa-pencil"></i> <?php echo $setting_module; ?></h3>
         </div>
         <div class="panel-body">
             <div id="tabs" class="htabs">
               <a href="#tab-setting"><?php echo $text_tab_setting; ?></a>  
               <a href="#tab-import"><?php echo $text_tab_import; ?></a>
-              <a href="#tab-lot"><?php echo $text_tab_lot; ?></a>
+              <a href="#tab-orders"><?php echo $text_tab_orders; ?></a>
               <a href="#tab-author"><?php echo $text_tab_author; ?></a>
             </div>
         </div>
@@ -43,23 +43,63 @@ error_reporting(E_ALL ^E_NOTICE);
                       <td><?php echo $entry_password; ?></td>
                       <td><input name="moyskladOC23Synch12_password" type="password" value="<?php echo $moyskladOC23Synch12_password; ?>" /></td>
                     </tr>
+                    <tr>
+                    <td><?php echo $entry_order_status_to_exchange; ?></td>
+                    <td>
+                      <select name="moyskladOC23Synch12_order_status_to_exchange">
+                        <option value="0" <?php echo ($moyskladOC23Synch12_order_status_to_exchange == 0)? 'selected' : '' ;?>><?php echo $entry_order_status_to_exchange_not; ?></option>
+                        <?php foreach ($order_statuses as $order_status) { ?>
+                        <option value="<?php echo $order_status['order_status_id'];?>" <?php echo ($moyskladOC23Synch12_order_status_to_exchange == $order_status['order_status_id'])? 'selected' : '' ;?>><?php echo $order_status['name']; ?></option>
+                        <?php } ?>
+                      </select>
+                    </td>
+                    </tr>
                </table>   
             </form>
             
         </div>
         <div id="tab-import">
             <table>
-                 <tr>
-                   <td><span style="margin-left:20px; color: black;"><?php echo $import_text; ?></span></td>
-                   <td><a class="button importProduct" style="margin-left: 30px;"><?php echo $import_button; ?></a></td>
-                 </tr>
-            </table> 
+              <tr>
+                <td>
+                  <form action="<?php echo $action_import; ?>" method="post" enctype="multipart/form-data"  class="form-inline">
+                  <div class="form-group">
+                    <span><?php echo $import_text; ?></span>
+                  </div>
+                <button type="submit" name="start" value="true" class="btn btn-primary importProduct" style="margin-left: 30px;" onclick="anime()"><?php echo $import_button; ?></button>
+                </form>
+                </td>
+              </tr>
+             <tr>
+                <td>
+               <form action="<?php echo $action_get_images; ?>" method="post" enctype="multipart/form-data" class="form-inline">
+                <div class="form-group">
+                <span style="margin-right: 30px;"><?php echo $download_image.": ". $count_image; ?></span>
+                </div>
+                <div class="form-group mx-sm-3">
+                  <input type="text" name="count_images" class="form-control" value="0">
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-left: 30px;" onclick="anime()"><?php echo $download;?></button>
+              </form>
+              </td>
+             </tr>    
+          </table> 
             
             
         </div>
-        <div id="tab-lot">
-            
-            
+        <div id="tab-orders">
+            <table>
+              <tr>
+                <td>
+                  <form action="<?php echo $action_get_orders; ?>" method="post" enctype="multipart/form-data" class="form-inline">
+                    <div class="form-group">
+                    <span style="margin-right: 30px;"><?php echo $text_order; ?></span>
+                    </div>
+                    <button type="submit" name="get_orders" class="btn btn-primary" style="margin-left: 30px;" onclick="anime()"><?php echo $export_order;?></button>
+                  </form>
+                </td>
+              </tr>
+            </table>
         </div>
         <div id="tab-author">
             <table>
@@ -83,36 +123,12 @@ error_reporting(E_ALL ^E_NOTICE);
  //--></script>
 
  <script>
-     $('a.importProduct').click(function(e){
-     e.preventDefault();
-     
+  //функция которая активирует анимацию загрузки
+   function anime(){
      //вкл. анимацию загрузки
      $('.ball').css('display','block');
      $('.ball1').css('display','block');
-     
-     
-      $.ajax({
-               url : "index.php?route=extension/module/moyskladOC23Synch12/getAllProduct&token=<?=$_GET['token']?>",
-               type : 'POST',
-               dataType:'text',
-               data :{
-                start: 'start'
-            },
-             success:function(data){
-                //когда товар загрузился, убираем анимацию и выводим сообщение, что товар загрузился 
-                $('.ball').css('display','none');
-                $('.ball1').css('display','none');
-                 alert(data);
-                 
-             },
-             error:function (xhr, ajaxOptions, thrownError){
-                alert(thrownError); //выводим ошибку
-            }
-              
-           });
-     
-    });
+  };
  </script>
-
 
 <?php echo $footer; ?>
