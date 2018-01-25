@@ -1,6 +1,6 @@
 <?php
 // Heading
-$_['heading_title']		= 'MoySklad Synchronization (OpenCart 2.1) version 1.2';
+$_['heading_title']		= 'MoySklad Synchronization (OpenCart 2.3) version 1.2';
 $_['text_extension']	= 'Расширения';
 
 

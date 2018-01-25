@@ -12,6 +12,201 @@
             $this->db->query("DELETE FROM " . DB_PREFIX . "uuid WHERE product_id = '" . (int)$product_id . "'");   
             ]]></add>
         </operation>
-    </file>  
-</modification>
+    </file>
+    <file path="catalog/model/catalog/information.php">
+        <operation>
+            <search trim="true|false" index="0"><![CDATA[class ModelCatalogInformation extends Model {]]></search>
+            <add position="after" offset="0"><![CDATA[
+
+            //получаем product_id,url с таблици uuid для обновы инфы текущего товара    
+            public function getForCronInfo(){
+                $query = $this->db->query("SELECT product_id,url FROM `" . DB_PREFIX . "uuid`");
+
+               return $query->rows;
+            }
+
+            //обновляем информацию о товаре
+            public function updateProduct($data){
+                $this->db->query("UPDATE " . DB_PREFIX . "product SET  quantity = '" . (int)$data['quantity'] . "' WHERE product_id = '" . (int)$data['product_id'] . "'");
+
+                    if (isset($data['image_name'])) {
+            $this->db->query("UPDATE " . DB_PREFIX . "product SET image = '" . $this->db->escape($data['image_name']) . "' WHERE product_id = '" . (int)$data['product_id'] . "'");
+                    }
+
+             return true;
+            }
+
+            //заносим в базу кэш картинки
+            public function  addImagCache($data){
+              $this->db->query('INSERT INTO `'.DB_PREFIX.'cache_image` SET name_image = "' . $data["image_name"] . '", `image_url` = "' . $data["image_href"] . '"');  
+              return true;
+            }
+
+            //получаем с базы ссылку и имя картинок
+            public function getImage(){
+                $query = $this->db->query('SELECT name_image, image_url FROM `'.DB_PREFIX.'cache_image`');
+                return $query->rows;
+            }
+
+            //удаляем с базы скачанные картинки
+            public function delImage(){
+                $this->db->query('DELETE  FROM `'.DB_PREFIX.'cache_image`');
+
+                return true;
+            }
+
+
+
+            ]]></add>
+        </operation>
+    </file>
+    <file path="catalog/controller/common/home.php">
+        <operation>
+            <search trim="true|false" index="0"><![CDATA[class ControllerCommonHome extends Controller {]]></search>
+            <add position="after" offset="0"><![CDATA[
+
+            //тут храним временные данные    
+            public $cache = [];
+
+            //храним url  МойСклад API
+            public $urlAPI = "https://online.moysklad.ru/api/remap/1.1/";
+
+            protected function dataClient(){
+                //получаем данные в переменные
+                $mas = [
+                    "login" => (!empty($this->config->get('moyskladOC23Synch12_username'))) ? $this->config->get('moyskladOC23Synch12_username') : false,
+                    "pass" => (!empty($this->config->get('moyskladOC23Synch12_password'))) ? $this->config->get('moyskladOC23Synch12_password') : false
+                ];
+
+                return $mas;
+            }
+
+            //главный метод который запускает крон    
+            public function cron(){
+                $this->load->model('catalog/information');
+
+                //данные с базы сохраняем во временное хранилище
+                $this->cache = $this->model_catalog_information->getForCronInfo();
+
+                //делаем проверку есть ли в базе записи uuid
+                if(!empty($this->cache)){
+                  if(!empty($this->getAllProduct())){
+                    if(!empty($this->getQuantity())){
+                        $this->insertInfo();
+
+                        #TODO тут надо написать функцию которая будет скачивать картинки и после можно будет подключать в кроне этот скрипт
+                    }
+                  }
+                }
+
+                 
+          
+            }
+
+            //по ссылке получаем всю нужную инфу
+            public function getAllProduct(){
+
+                $data = $this->cache;
+                unset($this->cache);
+                $mas = [];
+                foreach($data as $dat){
+
+                 $products = $this->restAPIMoySklad($dat['url'],0,"GET");
+
+                 $mas[] = [
+                 'product_id'   =>   $dat['product_id'],
+                 'quantity'     =>   $products['name'],
+                 'image_name'   =>   (!empty($products['image']['filename'])) ? $products['image']['filename'] : "",
+                 'image_href'   =>   (!empty($products['image']['meta']['href'])) ? $products['image']['meta']['href'] : "",   
+                 ];
+                }
+                 
+                return $this->cache = $mas; 
+            }
+
+
+            
+
+            //юзаем API моегосклада
+            public function restAPIMoySklad($url,$data,$method){
+        
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+                //Делаем проверку, если данные есть для отправки то отправляем.
+                if(!empty($data)){
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                }
+
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);  
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($ch, CURLOPT_USERPWD, $this->dataClient()['login'].":".$this->dataClient()['pass']);
+
+                if(!empty($data)){
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                    'Content-Type: application/json',
+                    'Content-Length: ' . strlen($data))                                                                       
+                );  
+                }else{
+                  curl_setopt($ch, CURLOPT_HTTPHEADER,array('Content-Type: application/json'));    
+                }
+
+                $response = curl_exec($ch);
+                curl_close($ch);
+                
+                //true  ставим, что бы получить массив, а не объект
+                return json_decode($response, true);
+            }
+
+            //получаем количество доступного товара в "Остатках"
+            public function getQuantity(){
+
+                $data = $this->cache;
+                unset($this->cache);
+
+                $mas = [];
+
+                foreach($data as $dat){
+                    $jsonAnswerServer = $this->restAPIMoySklad($this->urlAPI."entity/assortment?filter=name=".urlencode($dat['quantity']),0,"GET");
+
+                    //формируем результат по столбцу "Доступно" в моем складе
+                    $quantity = $jsonAnswerServer['rows'][0]['quantity'];
+
+                    $mas[] = [
+                      'product_id'  => $dat['product_id'],
+                      'quantity'    => $quantity,
+                      'image_name'  => (!empty($dat['image_name'])) ? 'catalog/moysklad/'.$dat['image_name'] : "",
+                      'image_href'  => $dat['image_href'],
+
+                    ];
+                }
+
+            return $this->cache = $mas;
+
+          
+            }
+
+            //перезаписываем данные о количестве и название картинки+заносим в базу кэш
+            public function insertInfo(){
+                $this->load->model('catalog/information');
+                $data = $this->cache;
+                unset($this->cache);
+
+                foreach($data as $dat){
+                    $product = $this->model_catalog_information->updateProduct($dat);
+                    if(!empty($dat['image_name'])){
+                      $image = $this->model_catalog_information->addImagCache($dat);
+                    }
+                    
+                }
+
+                return true;
+             }
+
+
+
+
+            ]]></add>
+        </operation>
+    </file>   
+ </modification>
 

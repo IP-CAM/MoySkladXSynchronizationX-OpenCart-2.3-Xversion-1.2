@@ -12,8 +12,7 @@ class ModelToolMoyskladOC23Synch12 extends Model {
             CREATE TABLE IF NOT EXISTS `".DB_PREFIX."cache_image` (
               `name_image` varchar(255) NOT NULL,
               `image_url` text CHARACTER SET utf8 NOT NULL,
-               PRIMARY KEY (`name_image`)
-             )  ENGINE=InnoDB DEFAULT CHARSET=utf8;
+              )  ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
         ";
         
