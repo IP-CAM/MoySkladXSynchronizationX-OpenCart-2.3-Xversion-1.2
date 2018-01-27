@@ -235,7 +235,7 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             }
 
             //вызов рекурсии  
-             $this->getAllProduct($position+$i);
+            $this->getAllProduct($position+$i);
         
         }
         
@@ -257,7 +257,7 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             
             //заносим в массив данные о картинке (имя, ссылка)
             $image_data = [
-                "name_image"    =>  $mas["image"]["filename"],
+                "name_image"    =>  htmlspecialchars($mas["image"]["filename"]),
                 "image_url"     =>  $mas["image"]["meta"]["href"]
             ];
 
@@ -279,6 +279,15 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
       $price = 0;
         }
  
+        $quantity = (!empty($this->getQuantity($mas['name']))) ? $this->getQuantity($mas['name']): 0;
+
+        //если количество == 0  то ставим статус товара "Нет в наличии" иначе  "В наличии"
+        if($quantity == 0){
+            $stock_status_id = 5;
+        }elseif($quantity != 0){
+            $stock_status_id = 7;
+        }
+ 
         $data = [
             'model'                 =>  "",
             'sku'                   =>  "",
@@ -288,10 +297,10 @@ class ControllerextensionmoduleMoyskladOC23Synch12 extends Controller {
             'isbn'                  =>  "",
             'mpn'                   =>  "",
             'location'              =>  "",
-            'quantity'              =>  (!empty($this->getQuantity($mas['name']))) ? $this->getQuantity($mas['name']): 0,
+            'quantity'              =>  $quantity,
             'minimum'               =>  "",
             'subtract'              =>  "",
-            'stock_status_id'       =>  "",
+            'stock_status_id'       =>  $stock_status_id,
             'date_available'        =>  "",
             'manufacturer_id'       =>  "",
             'shipping'              =>  "",
